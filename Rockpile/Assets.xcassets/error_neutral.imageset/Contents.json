@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "error_neutral.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
