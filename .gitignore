@@ -1,0 +1,61 @@
+# Xcode
+build/
+*.xcodeproj/
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcuserdata/
+*.xcworkspace/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj
+
+# Xcodegen
+Rockpile.xcodeproj/
+
+# Distribution
+dist/
+
+# macOS
+.DS_Store
+*.swp
+*~
+._*
+
+# Claude Code
+.claude/
+.baoyu-skills/
+MEMORY.md
+
+# Generated sprites (large files)
+gen/
+
+# Build scripts with credentials
+# build-release.sh is tracked but credentials should be empty before commit
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# Credentials
+.env.release
+.env.local
+.env
+
+# Logs
+*.log

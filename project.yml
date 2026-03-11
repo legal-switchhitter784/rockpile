@@ -1,0 +1,37 @@
+name: Rockpile
+options:
+  bundleIdPrefix: com.rockpile
+  deploymentTarget:
+    macOS: "15.0"
+  xcodeVersion: "16.0"
+  minimumXcodeGenVersion: "2.38"
+
+targets:
+  Rockpile:
+    type: application
+    platform: macOS
+    sources:
+      - path: Rockpile
+        excludes:
+          - "**/*.entitlements"
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rockpile.app
+        MARKETING_VERSION: "2.0.5"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: Rockpile/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Rockpile/Rockpile.entitlements
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "15.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Automatic
+          ENABLE_HARDENED_RUNTIME: false
+        Release:
+          CODE_SIGN_STYLE: Manual
+          ENABLE_HARDENED_RUNTIME: true
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          DEVELOPMENT_TEAM: "${TEAM_ID}"
