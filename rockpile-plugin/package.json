@@ -1,0 +1,12 @@
+{
+  "name": "rockpile-plugin",
+  "version": "1.0.0",
+  "description": "Rockpile notch companion plugin for Rockpile",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "tsc",
+    "install-plugin": "cp -r . ~/.rockpile/plugins/rockpile/"
+  },
+  "author": "",
+  "license": "MIT"
+}

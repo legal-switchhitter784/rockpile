@@ -1,0 +1,7 @@
+{
+  "name": "rockpile-hook",
+  "version": "1.0.0",
+  "description": "Rockpile hook that forwards events to Rockpile companion app",
+  "type": "module",
+  "main": "handler.ts"
+}
