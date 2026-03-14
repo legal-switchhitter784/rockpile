@@ -347,9 +347,12 @@ final class TokenTracker {
             dailyTokensUsed = daily
         }
 
-        // Rate limit detection
+        // Rate limit detection — auto-clear on normal events
         if let limited = event.rateLimited, limited {
             isRateLimited = true
+        } else if isRateLimited {
+            // Normal event received → no longer rate limited
+            isRateLimited = false
         }
 
         lastUpdateTime = Date()
