@@ -91,15 +91,20 @@ enum AppSettings {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
 
-    /// 是否需要显示引导（首次 或 版本更新后）
+    /// 是否需要显示引导（仅首次未完成时）
+    /// 版本更新不再强制重新引导
     static var needsOnboarding: Bool {
-        if !setupCompleted { return true }
-        return setupCompletedVersion != currentAppVersion
+        !setupCompleted
     }
 
     /// 是否属于版本更新（而非首次安装）
     static var isVersionUpdate: Bool {
         setupCompleted && setupCompletedVersion != currentAppVersion
+    }
+
+    /// 是否有新版本说明（非阻塞提示）
+    static var hasNewVersionNotes: Bool {
+        setupCompleted && !setupCompletedVersion.isEmpty && setupCompletedVersion != currentAppVersion
     }
 
     /// 当前版本的更新内容（每次发版手动维护）

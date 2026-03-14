@@ -2,7 +2,7 @@ import AppKit
 
 extension NSScreen {
     static var builtInOrMain: NSScreen {
-        screens.first { $0.isBuiltIn } ?? main!
+        screens.first { $0.isBuiltIn } ?? main ?? screens.first!
     }
 
     var isBuiltIn: Bool {

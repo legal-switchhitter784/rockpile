@@ -18,12 +18,9 @@ struct GroundSpriteView: View {
     private static let usableWidthFraction: CGFloat = 0.8
     private static let leftMarginFraction: CGFloat = 0.1
 
-    /// 睡眠时贴地
-    /// 几何: spriteSize=72, scale=1.125, content rows 24-55
-    /// content_bottom = (H - |yOffset| - 72) + 55*1.125
-    /// sand ≈ H-30 → yOffset=-16 使 content_bottom ≈ H-26 (嵌入沙面 ~4pt)
+    /// 使用传入的 yOffset（不再硬编码贴地偏移，极简水塘无沙地）
     private var effectiveYOffset: CGFloat {
-        state == .sleeping ? -16 : yOffset
+        yOffset
     }
 
     // ── Crawling (arc path, slower) ──

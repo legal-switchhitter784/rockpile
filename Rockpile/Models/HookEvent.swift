@@ -8,6 +8,7 @@ struct HookEvent: Decodable, Sendable {
     let tool: String?
     let error: String?
     let userPrompt: String?
+    let cwd: String?
 
     // Token usage (per-request, from plugin)
     let inputTokens: Int?
@@ -21,6 +22,10 @@ struct HookEvent: Decodable, Sendable {
     // Rate limit flag (429 detected)
     let rateLimited: Bool?
 
+    // Permission handling (P5)
+    let toolUseId: String?
+    let toolInput: [String: String]?
+
     /// Direct initializer — avoids JSON round-trip when synthesizing events (e.g. GatewaySessionRouter).
     init(sessionId: String, event: String, status: String, tool: String? = nil) {
         self.sessionId = sessionId
@@ -30,17 +35,20 @@ struct HookEvent: Decodable, Sendable {
         self.tool = tool
         self.error = nil
         self.userPrompt = nil
+        self.cwd = nil
         self.inputTokens = nil
         self.outputTokens = nil
         self.cacheReadTokens = nil
         self.cacheCreationTokens = nil
         self.dailyTokensUsed = nil
         self.rateLimited = nil
+        self.toolUseId = nil
+        self.toolInput = nil
     }
 
     enum CodingKeys: String, CodingKey {
         case sessionId = "session_id"
-        case event, status, ts, tool, error
+        case event, status, ts, tool, error, cwd
         case userPrompt = "user_prompt"
         case inputTokens = "input_tokens"
         case outputTokens = "output_tokens"
@@ -48,5 +56,7 @@ struct HookEvent: Decodable, Sendable {
         case cacheCreationTokens = "cache_creation_tokens"
         case dailyTokensUsed = "daily_tokens_used"
         case rateLimited = "rate_limited"
+        case toolUseId = "tool_use_id"
+        case toolInput = "tool_input"
     }
 }

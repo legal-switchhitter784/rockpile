@@ -27,25 +27,25 @@ enum DS {
     // 9 → 10 → 11 → 13 → 15
 
     enum Font {
-        /// Tiny labels in compact UI — 8pt
-        static let tiny = SwiftUI.Font.system(size: 8)
-        /// Captions, metadata timestamps — 9pt mono
-        static let caption = SwiftUI.Font.system(size: 9, design: .monospaced)
-        /// Secondary info, labels — 10pt
-        static let secondary = SwiftUI.Font.system(size: 10)
-        /// Body text, activity details — 11pt
-        static let body = SwiftUI.Font.system(size: 11)
-        /// Subheadings, status — 12pt medium
-        static let subhead = SwiftUI.Font.system(size: 12, weight: .medium)
-        /// Section titles — 14pt semibold
-        static let title = SwiftUI.Font.system(size: 14, weight: .semibold)
+        /// Tiny labels, compact badges — 9pt
+        static let tiny = SwiftUI.Font.system(size: 9)
+        /// Captions, timestamps — 10pt mono
+        static let caption = SwiftUI.Font.system(size: 10, design: .monospaced)
+        /// Secondary info, labels — 11pt
+        static let secondary = SwiftUI.Font.system(size: 11)
+        /// Body text, activity details — 12pt
+        static let body = SwiftUI.Font.system(size: 12)
+        /// Subheadings, status — 13pt medium
+        static let subhead = SwiftUI.Font.system(size: 13, weight: .medium)
+        /// Section titles — 15pt semibold
+        static let title = SwiftUI.Font.system(size: 15, weight: .semibold)
 
         /// Monospaced variants
-        static let monoTiny = SwiftUI.Font.system(size: 8, design: .monospaced)
-        static let monoSmall = SwiftUI.Font.system(size: 9, design: .monospaced)
-        static let mono = SwiftUI.Font.system(size: 10, design: .monospaced)
-        static let monoBody = SwiftUI.Font.system(size: 11, design: .monospaced)
-        static let monoBold = SwiftUI.Font.system(size: 11, weight: .bold, design: .monospaced)
+        static let monoTiny = SwiftUI.Font.system(size: 9, design: .monospaced)
+        static let monoSmall = SwiftUI.Font.system(size: 10, design: .monospaced)
+        static let mono = SwiftUI.Font.system(size: 11, design: .monospaced)
+        static let monoBody = SwiftUI.Font.system(size: 12, design: .monospaced)
+        static let monoBold = SwiftUI.Font.system(size: 12, weight: .bold, design: .monospaced)
     }
 
     // MARK: - Semantic Opacity Levels

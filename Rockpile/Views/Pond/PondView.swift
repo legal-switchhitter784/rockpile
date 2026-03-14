@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Underwater Scene (SpongeBob-inspired)
+// MARK: - Underwater Scene (极简深蓝 — Notchi-inspired)
 
 struct PondView: View {
     let sessions: [SessionData]
@@ -10,11 +10,13 @@ struct PondView: View {
     /// Token trackers for default (idle) creatures when no active session
     var localTokenTracker: TokenTracker?
     var remoteTokenTracker: TokenTracker?
+    /// Callback when a creature sprite is tapped
+    var onSelectSession: ((String) -> Void)?
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Deep ocean gradient — darkens and turns murky when oxygen is low
+                // Deep ocean gradient — minimal dark blue
                 LinearGradient(
                     colors: waterGradientColors,
                     startPoint: .top,
@@ -22,19 +24,9 @@ struct PondView: View {
                 )
                 .allowsHitTesting(false)
 
-                // 🏖️ Sandy ocean floor (SpongeBob-style ground for creature contrast)
-                OceanFloorView(width: geometry.size.width, height: geometry.size.height)
-
-                // Seaweed clusters (rendered ON TOP of sand)
-                SeaweedCluster(in: geometry.size)
-                    .allowsHitTesting(false)
-
-                // Floating bubbles — fewer when oxygen is low
+                // Sparse bubbles only
                 BubblesView(in: geometry.size, oxygenLevel: oxygenLevel)
                     .allowsHitTesting(false)
-
-                // 🪨 Bottom decorations (stones + clickable shell, sitting on sand)
-                DecorationView(width: geometry.size.width, height: geometry.size.height, groundHeight: OceanFloorView.groundHeight)
 
                 // Murky overlay when oxygen is critically low
                 if oxygenLevel < 0.3 {
@@ -43,22 +35,23 @@ struct PondView: View {
                         .allowsHitTesting(false)
                 }
 
-                // Render sprites — always show both creature types
-                ZStack(alignment: .bottom) {
-                    Color.clear
-                        .allowsHitTesting(false)
+                // Render sprites — scale to fit pond, clamp inside
+                let pondW = geometry.size.width
+                let pondH = geometry.size.height
+                // Scale sprites down if pond is too small
+                let spriteScale = min(1.0, pondH / 150.0)
 
-                    let crawfish = sessions.filter { $0.creatureType == .crawfish }
-                    let crabs = sessions.filter { $0.creatureType == .hermitCrab }
+                let crawfish = sessions.filter { $0.creatureType == .crawfish }
+                let crabs = sessions.filter { $0.creatureType == .hermitCrab }
 
-                    // 🦞 Crawfish: mid-water level (30% 池塘需要更高位置)
+                // 🦞 Crawfish: upper 35% of pond
+                Group {
                     if crawfish.isEmpty {
-                        // Default idle crawfish (always visible, swims above sand)
                         UnderwaterSpriteView(
                             state: .sleeping,
-                            xPosition: 0.75,
-                            yOffset: -45,
-                            totalWidth: geometry.size.width,
+                            xPosition: 0.70,
+                            yOffset: 0,
+                            totalWidth: pondW,
                             glowOpacity: 0,
                             isDead: remoteTokenTracker?.isDead ?? false,
                             tokenTracker: remoteTokenTracker
@@ -66,36 +59,40 @@ struct PondView: View {
                     } else if crawfish.count == 1, let session = crawfish.first {
                         UnderwaterSpriteView(
                             state: session.state,
-                            xPosition: crabs.isEmpty ? 0.5 : session.spriteXPosition,
-                            yOffset: crabs.isEmpty ? -38 : max(-60, session.spriteYOffset - 20),
-                            totalWidth: geometry.size.width,
+                            xPosition: crabs.isEmpty ? 0.5 : 0.65,
+                            yOffset: 0,
+                            totalWidth: pondW,
                             glowOpacity: glowOpacity(for: session.id),
                             isDead: session.tokenTracker.isDead,
                             tokenTracker: session.tokenTracker
                         )
+                        .onTapGesture { onSelectSession?(session.id) }
                     } else {
                         ForEach(depthSorted(crawfish)) { session in
                             UnderwaterSpriteView(
                                 state: session.state,
                                 xPosition: session.spriteXPosition,
-                                yOffset: max(-60, session.spriteYOffset - 20),
-                                totalWidth: geometry.size.width,
+                                yOffset: 0,
+                                totalWidth: pondW,
                                 glowOpacity: glowOpacity(for: session.id),
                                 isDead: session.tokenTracker.isDead,
                                 tokenTracker: session.tokenTracker
                             )
+                            .onTapGesture { onSelectSession?(session.id) }
                         }
                     }
+                }
+                .scaleEffect(spriteScale)
+                .position(x: pondW * 0.65, y: pondH * 0.30)
 
-                    // 🐚 Hermit crabs: 贴地 — 嵌入沙面
-                    // sprite=72pt, 帧底部8px透明(≈9pt), groundHeight=30
-                    // yOffset=-16 → 视觉底部 25pt 处, 嵌入沙面 ~5pt
+                // 🐚 Hermit crabs: lower 65% of pond
+                Group {
                     if crabs.isEmpty {
                         GroundSpriteView(
                             state: .sleeping,
-                            xPosition: 0.25,
-                            yOffset: -16,
-                            totalWidth: geometry.size.width,
+                            xPosition: 0.30,
+                            yOffset: 0,
+                            totalWidth: pondW,
                             glowOpacity: 0,
                             isDead: localTokenTracker?.isDead ?? false,
                             tokenTracker: localTokenTracker
@@ -103,27 +100,31 @@ struct PondView: View {
                     } else if crabs.count == 1, let session = crabs.first {
                         GroundSpriteView(
                             state: session.state,
-                            xPosition: crawfish.isEmpty ? 0.5 : session.spriteXPosition,
-                            yOffset: crawfish.isEmpty ? -14 : max(-26, session.spriteYOffset - 6),
-                            totalWidth: geometry.size.width,
+                            xPosition: crawfish.isEmpty ? 0.5 : 0.35,
+                            yOffset: 0,
+                            totalWidth: pondW,
                             glowOpacity: glowOpacity(for: session.id),
                             isDead: session.tokenTracker.isDead,
                             tokenTracker: session.tokenTracker
                         )
+                        .onTapGesture { onSelectSession?(session.id) }
                     } else {
                         ForEach(crabs) { session in
                             GroundSpriteView(
                                 state: session.state,
                                 xPosition: session.spriteXPosition,
-                                yOffset: max(-26, session.spriteYOffset - 6),
-                                totalWidth: geometry.size.width,
+                                yOffset: 0,
+                                totalWidth: pondW,
                                 glowOpacity: glowOpacity(for: session.id),
                                 isDead: session.tokenTracker.isDead,
                                 tokenTracker: session.tokenTracker
                             )
+                            .onTapGesture { onSelectSession?(session.id) }
                         }
                     }
                 }
+                .scaleEffect(spriteScale)
+                .position(x: pondW * 0.35, y: pondH * 0.65)
 
                 // ✨ Cross-creature interaction FX (between sprites and surface)
                 InteractionFXView(
@@ -140,6 +141,7 @@ struct PondView: View {
                 }
                 .allowsHitTesting(false)
             }
+            .drawingGroup()  // Metal compositing for smoother animations
         }
     }
 
@@ -154,32 +156,26 @@ struct PondView: View {
 
     // MARK: - Oxygen-Dependent Visuals
 
-    /// Water gradient shifts from clear blue to dark murky green as oxygen drops
+    /// Water gradient — minimal deep blue, darkens when oxygen drops
     private var waterGradientColors: [Color] {
         if oxygenLevel > 0.6 {
-            // Normal: clear blue ocean
             return [
-                Color(red: 0.02, green: 0.08, blue: 0.18),
-                Color(red: 0.04, green: 0.14, blue: 0.30),
-                Color(red: 0.06, green: 0.20, blue: 0.38),
-                Color(red: 0.08, green: 0.25, blue: 0.42),
+                Color(red: 0.01, green: 0.04, blue: 0.08),
+                Color(red: 0.02, green: 0.06, blue: 0.15),
+                Color(red: 0.03, green: 0.09, blue: 0.22),
             ]
         } else if oxygenLevel > 0.3 {
-            // Warning: slightly darker, greenish tint
-            let mix = (0.6 - oxygenLevel) / 0.3 // 0→1 as oxygen drops 0.6→0.3
+            let mix = (0.6 - oxygenLevel) / 0.3
             return [
-                Color(red: 0.02, green: 0.08 + mix * 0.02, blue: 0.18 - mix * 0.04),
-                Color(red: 0.04, green: 0.14 + mix * 0.03, blue: 0.28 - mix * 0.06),
-                Color(red: 0.05, green: 0.18 + mix * 0.04, blue: 0.32 - mix * 0.08),
-                Color(red: 0.06, green: 0.22 + mix * 0.04, blue: 0.35 - mix * 0.10),
+                Color(red: 0.01, green: 0.04 + mix * 0.01, blue: 0.08 - mix * 0.02),
+                Color(red: 0.02, green: 0.06 + mix * 0.02, blue: 0.14 - mix * 0.04),
+                Color(red: 0.03, green: 0.08 + mix * 0.02, blue: 0.18 - mix * 0.06),
             ]
         } else {
-            // Critical: dark murky water
             return [
-                Color(red: 0.02, green: 0.06, blue: 0.08),
-                Color(red: 0.03, green: 0.10, blue: 0.12),
-                Color(red: 0.04, green: 0.14, blue: 0.14),
-                Color(red: 0.05, green: 0.16, blue: 0.15),
+                Color(red: 0.01, green: 0.03, blue: 0.04),
+                Color(red: 0.02, green: 0.05, blue: 0.06),
+                Color(red: 0.03, green: 0.07, blue: 0.08),
             ]
         }
     }

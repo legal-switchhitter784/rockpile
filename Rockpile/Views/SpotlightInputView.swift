@@ -1,11 +1,6 @@
 import SwiftUI
 
-/// 展开面板底部输入框 — 发送指令给 Rockpile
-///
-/// - 半透明暗色背景，monospaced 字体
-/// - Enter 发送，Escape 取消
-/// - 无会话时显示黄色"等待连接..."
-/// - 发送失败显示红色提示
+/// 展开面板底部输入框 — 极简风格
 struct SpotlightInputView: View {
     let onSend: (String) -> Void
 
@@ -14,16 +9,17 @@ struct SpotlightInputView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Divider()
-                .background(DS.Surface.divider)
+            Rectangle()
+                .fill(Color.white.opacity(0.04))
+                .frame(height: 1)
 
             HStack(spacing: DS.Space.sm) {
-                // 🦞 Target indicator — commands go to crawfish via Gateway
-                Text("\u{1F99E}")
-                    .font(.system(size: 12))
-                    .opacity(DS.Opacity.secondary)
+                Text(">")
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundColor(isFocused ? DS.Semantic.accent : DS.TextColor.muted)
 
-                TextField(L10n.s("input.placeholder"), text: $inputText)
+                TextField("", text: $inputText, prompt: Text(L10n.s("input.placeholder"))
+                    .foregroundColor(DS.TextColor.muted))
                     .textFieldStyle(.plain)
                     .font(DS.Font.monoBody)
                     .foregroundColor(DS.TextColor.primary)
@@ -40,17 +36,19 @@ struct SpotlightInputView: View {
 
                 if !inputText.isEmpty {
                     Button(action: sendMessage) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(DS.Semantic.accent)
+                        Text("↵")
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .foregroundColor(.black)
+                            .frame(width: 24, height: 24)
+                            .background(DS.Semantic.accent)
+                            .cornerRadius(4)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(L10n.s("input.send"))
                 }
             }
             .padding(.horizontal, DS.Space.md)
-            .padding(.vertical, DS.Space.sm)
-            .background(Color.white.opacity(DS.Opacity.ghost))
+            .padding(.vertical, 8)
 
             // Status feedback
             feedbackBar
@@ -86,7 +84,6 @@ struct SpotlightInputView: View {
         }
         .padding(.horizontal, DS.Space.md)
         .padding(.vertical, DS.Space.xxs)
-        .background(color.opacity(0.1))
         .transition(.opacity)
     }
 

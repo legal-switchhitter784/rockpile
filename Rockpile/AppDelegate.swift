@@ -9,12 +9,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statusBar = StatusBarController()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Auto-detect AI provider and configure O₂ defaults on first launch
-        AIProviderDetector.autoConfigureIfNeeded()
+        // Zero-config: auto-setup on first launch (no onboarding wizard)
+        autoSetupIfNeeded()
 
-        if AppSettings.needsOnboarding {
-            launchOnboarding()
-        } else if AppSettings.setupRole == .host {
+        if AppSettings.setupRole == .host {
             launchHostOnlyMode()
         } else {
             launchNotchMode()
@@ -41,7 +39,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    // MARK: - Onboarding
+    // MARK: - Auto Setup (Zero-Config)
+
+    /// First-launch auto-configuration — replaces the 4-step onboarding wizard.
+    /// Detects environment, installs hooks, sets defaults.
+    private func autoSetupIfNeeded() {
+        guard !AppSettings.setupCompleted else {
+            // Already set up — just ensure hooks are current
+            AIProviderDetector.autoConfigureIfNeeded()
+            HookInstaller.installIfNeeded()
+            // Update version stamp (skip re-onboarding on version update)
+            if AppSettings.setupCompletedVersion != AppSettings.currentAppVersion {
+                AppSettings.setupCompletedVersion = AppSettings.currentAppVersion
+            }
+            return
+        }
+
+        // Detect system language
+        let preferredLang = Locale.preferredLanguages.first ?? "en"
+        if preferredLang.hasPrefix("zh") {
+            AppSettings.appLanguage = "zh"
+        } else if preferredLang.hasPrefix("ja") {
+            AppSettings.appLanguage = "ja"
+        } else {
+            AppSettings.appLanguage = "en"
+        }
+
+        // Detect Claude Code → default to local mode
+        let claudeDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude")
+        AppSettings.setupRole = .local
+
+        // Auto-detect AI provider and configure O₂
+        AIProviderDetector.autoConfigureIfNeeded()
+
+        // Override O₂ defaults for Claude subscription
+        AppSettings.localOxygenMode = "claude"
+        AppSettings.localOxygenTankCapacity = 300_000
+
+        // Install bash hooks
+        HookInstaller.installIfNeeded()
+
+        // Mark setup complete
+        AppSettings.setupCompleted = true
+    }
+
+    // MARK: - Onboarding (manual reconfigure only)
 
     private func launchOnboarding() {
         NSApplication.shared.setActivationPolicy(.regular)
@@ -102,7 +145,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Services
 
     private func startServices() {
-        PluginInstaller.installIfNeeded()
+        HookInstaller.installIfNeeded()
+        PluginInstaller.installIfNeeded()  // Legacy plugin support
         SocketServer.shared.start { event, source in
             Task { @MainActor in
                 StateMachine.shared.handleEvent(event, source: source)
@@ -122,7 +166,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupNotchWindow() {
         ScreenSelector.shared.refreshScreens()
-        guard let screen = ScreenSelector.shared.selectedScreen else { return }
+        guard let screen = ScreenSelector.shared.selectedScreen
+                ?? NSScreen.main ?? NSScreen.screens.first else { return }
         PanelManager.shared.updateGeometry(for: screen)
 
         let panel = NotchPanel(frame: windowFrame(for: screen))
@@ -159,7 +204,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func repositionWindow() {
         guard let panel = notchPanel else { return }
         ScreenSelector.shared.refreshScreens()
-        guard let screen = ScreenSelector.shared.selectedScreen else { return }
+        guard let screen = ScreenSelector.shared.selectedScreen
+                ?? NSScreen.main ?? NSScreen.screens.first else { return }
 
         PanelManager.shared.updateGeometry(for: screen)
         panel.setFrame(windowFrame(for: screen), display: true)

@@ -37,16 +37,17 @@ final class StateMachine {
             return
         }
         let creatureType = source.creatureType
+        let cwd = event.cwd ?? ""
 
         switch event.event {
         case "SessionStart":
-            sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
 
         case "SessionEnd":
             sessionStore.removeSession(id: event.sessionId)
 
         case "MessageReceived":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             session.updateTask(.thinking)
             session.addActivity(ActivityItem(
                 timestamp: Date(),
@@ -59,7 +60,7 @@ final class StateMachine {
             }
 
         case "LLMInput":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             session.updateTask(.thinking)
             session.addActivity(ActivityItem(
                 timestamp: Date(),
@@ -72,12 +73,12 @@ final class StateMachine {
             }
 
         case "LLMOutput":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             session.updateTask(.working)
             recordTokenUsage(event, for: session)
 
         case "ToolCall":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             session.updateTask(.working)
             session.addActivity(ActivityItem(
                 timestamp: Date(),
@@ -86,7 +87,7 @@ final class StateMachine {
             ))
 
         case "ToolResult":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             if event.status == "error" || event.error != nil {
                 session.updateTask(.error)
                 session.addActivity(ActivityItem(
@@ -110,9 +111,15 @@ final class StateMachine {
                 ))
             }
             recordTokenUsage(event, for: session)
+            // Sync conversation after tool results
+            syncConversation(event, session: session)
+            // Cancel any pending permission for this tool (user approved in terminal)
+            if let toolUseId = event.toolUseId {
+                PermissionHandler.shared.cancelIfPending(toolUseId)
+            }
 
         case "AgentStart":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             session.updateTask(.working)
 
         case "AgentEnd":
@@ -123,10 +130,12 @@ final class StateMachine {
                     type: .completion,
                     detail: "完成"
                 ))
+                // Sync conversation on completion
+                syncConversation(event, session: session)
             }
 
         case "SubagentSpawned":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             session.updateTask(.working)
 
         case "SubagentEnded":
@@ -135,8 +144,21 @@ final class StateMachine {
             }
 
         case "Compaction":
-            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: "", creatureType: creatureType)
+            let session = sessionStore.getOrCreateSession(id: event.sessionId, cwd: cwd, creatureType: creatureType)
             session.updateTask(.compacting)
+
+        case "PermissionRequest":
+            // Route to PermissionHandler
+            if let toolUseId = event.toolUseId, !toolUseId.isEmpty {
+                PermissionHandler.shared.addRequest(
+                    toolUseId: toolUseId,
+                    toolName: event.tool ?? "unknown",
+                    toolInput: event.toolInput,
+                    sessionId: event.sessionId
+                )
+                // Auto-expand notch to show permission banner
+                PanelManager.shared.expand()
+            }
 
         default:
             logger.info("Unknown event: \(event.event, privacy: .public)")
@@ -173,6 +195,15 @@ final class StateMachine {
             guard !Task.isCancelled else { return }
             logger.info("Emotion: \(emotion.rawValue, privacy: .public) @ \(intensity)")
             session.emotionState.recordEmotion(emotion, intensity: intensity)
+        }
+    }
+
+    private func syncConversation(_ event: HookEvent, session: SessionData) {
+        let sessionId = event.sessionId
+        let cwd = session.cwd.isEmpty ? (event.userPrompt ?? "") : session.cwd
+        guard !cwd.isEmpty else { return }
+        Task {
+            await ConversationParser.shared.syncSession(sessionId: sessionId, cwd: cwd)
         }
     }
 

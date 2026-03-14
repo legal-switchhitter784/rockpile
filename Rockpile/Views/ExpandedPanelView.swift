@@ -18,12 +18,22 @@ struct ExpandedPanelView: View {
     @State private var remoteCardExpanded = false
     @State private var expandedRecordId: UUID?
 
+    // Tab state
+    @State private var activeTab: PanelTab = .dashboard
+
+    enum PanelTab {
+        case dashboard, chat
+    }
+
     // Settings state
     @State private var localTankCapacity: Int = AppSettings.localOxygenTankCapacity
     @State private var remoteTankCapacity: Int = AppSettings.remoteOxygenTankCapacity
     @State private var localOxygenMode: String = AppSettings.localOxygenMode
     @State private var remoteOxygenMode: String = AppSettings.remoteOxygenMode
     @State private var reinstallMessage: String?
+
+    // Chat state
+    @State private var chatMessages: [ConversationMessage] = []
 
     var body: some View {
         if showingSettings {
@@ -35,146 +45,85 @@ struct ExpandedPanelView: View {
 
     // MARK: - Dashboard View (Dual Source)
 
+    // MARK: - Tab Bar
+
+    @ViewBuilder
+    private var tabBar: some View {
+        HStack(spacing: DS.Space.sm) {
+            tabButton("Dashboard", tab: .dashboard, icon: "chart.bar")
+            tabButton("Chat", tab: .chat, icon: "bubble.left.and.bubble.right")
+            Spacer()
+        }
+        .padding(.horizontal, DS.Space.md)
+        .padding(.vertical, DS.Space.xxs)
+    }
+
+    private func tabButton(_ label: String, tab: PanelTab, icon: String) -> some View {
+        Button {
+            activeTab = tab
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: icon)
+                    .font(.system(size: 9))
+                Text(label)
+                    .font(DS.Font.monoSmall)
+            }
+            .foregroundColor(activeTab == tab ? DS.TextColor.primary : DS.TextColor.muted)
+            .padding(.horizontal, DS.Space.sm)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .fill(activeTab == tab ? DS.Surface.raised : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Chat View
+
+    @ViewBuilder
+    private var chatView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            tabBar
+
+            ConversationView(messages: chatMessages)
+                .frame(maxHeight: .infinity)
+
+            // 输入框 — 固定底部
+            SpotlightInputView(
+                onSend: { message in
+                    CommandSender.shared.sendChat(message: message)
+                }
+            )
+        }
+        .task {
+            await loadChatMessages()
+        }
+    }
+
+    private func loadChatMessages() async {
+        guard let session = sessionStore.effectiveSession ?? sessionStore.effectiveLocalSession else { return }
+        chatMessages = await ConversationParser.shared.messages(for: session.id)
+    }
+
+    // MARK: - Dashboard View (Timeline + Smart O₂)
+
     @ViewBuilder
     private var dashboardView: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // ── 错误 toast (CodexBar 风格) ──
-            if let error = StateMachine.shared.lastError {
-                HStack(spacing: DS.Space.xs) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(DS.Semantic.warning)
-                    Text(error)
-                        .font(DS.Font.caption)
-                        .foregroundColor(DS.TextColor.primary)
-                        .lineLimit(1)
-                    Spacer()
-                    gatewayStatusView
-                }
-                .padding(.horizontal, DS.Space.md)
-                .padding(.vertical, DS.Space.xs)
-                .background(DS.Semantic.warning.opacity(DS.Opacity.ghost))
-                .transition(.move(edge: .top).combined(with: .opacity))
-            } else {
-                // ── Gateway 连接状态 (无错误时独立显示) ──
-                HStack {
-                    Spacer()
-                    gatewayStatusView
-                }
-                .padding(.horizontal, DS.Space.md)
-                .padding(.top, DS.Space.xxs)
-            }
+            // ── Smart O₂ Bar (1条 or 2条) ──
+            SmartOxygenBarView(
+                localTracker: sessionStore.localTokenTracker,
+                remoteTracker: sessionStore.remoteTokenTracker
+            )
+            .padding(.horizontal, DS.Space.md)
+            .padding(.vertical, DS.Space.xs)
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: DS.Space.sm) {
-                    // ── 双源合并行: 提供商 + 状态 ──
-                    DualSourceInfoRow(
-                        localSession: sessionStore.effectiveLocalSession,
-                        remoteSession: sessionStore.effectiveRemoteSession,
-                        localSessionCount: sessionStore.localSessions.count,
-                        remoteSessionCount: sessionStore.remoteSessions.count,
-                        localExpanded: $localCardExpanded,
-                        remoteExpanded: $remoteCardExpanded
-                    )
+            Divider().background(Color.white.opacity(0.04))
 
-                    // ── O₂ 双条合并 (对齐 InfoRow 布局) ──
-                    HStack(spacing: 0) {
-                        CompactOxygenBarView(
-                            tracker: sessionStore.localTokenTracker,
-                            creatureType: .hermitCrab
-                        )
-                        .padding(.horizontal, DS.Space.sm)
-                        .frame(maxWidth: .infinity)
-
-                        Rectangle()
-                            .fill(DS.Surface.divider)
-                            .frame(width: 1)
-                            .padding(.vertical, 2)
-
-                        CompactOxygenBarView(
-                            tracker: sessionStore.remoteTokenTracker,
-                            creatureType: .crawfish
-                        )
-                        .padding(.horizontal, DS.Space.sm)
-                        .frame(maxWidth: .infinity)
-                    }
-                    .padding(.vertical, DS.Space.xxs)
-                    .background(
-                        RoundedRectangle(cornerRadius: DS.Compact.cardRadius)
-                            .fill(DS.Surface.raised)
-                    )
-
-                    // ── Token 消耗概览（空闲时也显示日进度/待命状态）──
-                    if sessionStore.localTokenTracker.hasUsageData || sessionStore.remoteTokenTracker.hasUsageData || sessionStore.activeSessionCount > 0 {
-                        TokenConsumptionCard(
-                            localTracker: sessionStore.localTokenTracker,
-                            remoteTracker: sessionStore.remoteTokenTracker
-                        )
-                    }
-
-                    // ── 展开的活动日志 ──
-                    if localCardExpanded, let session = sessionStore.effectiveLocalSession {
-                        DualSourceActivitySection(
-                            session: session,
-                            creatureType: .hermitCrab
-                        )
-                    }
-                    if remoteCardExpanded, let session = sessionStore.effectiveRemoteSession {
-                        DualSourceActivitySection(
-                            session: session,
-                            creatureType: .crawfish
-                        )
-                    }
-
-                    // ── 足迹 ──
-                    let history = SessionHistory.shared.records
-                    if !history.isEmpty {
-                        sectionDivider
-
-                        HStack(spacing: DS.Space.xs) {
-                            DS.sectionLabel(L10n.s("dash.footprints"))
-
-                            // 今日/昨日汇总 + 趋势箭头
-                            let today = SessionHistory.shared.todayTotalTokens
-                            let yesterday = SessionHistory.shared.yesterdayTotalTokens
-                            if today > 0 {
-                                Text(TokenTracker.formatTokens(today))
-                                    .font(DS.Font.monoSmall)
-                                    .foregroundColor(DS.TextColor.secondary)
-                                if let trend = SessionHistory.shared.dayOverDayTrend {
-                                    Text(trend > 0.1 ? "↑" : trend < -0.1 ? "↓" : "→")
-                                        .font(DS.Font.monoSmall)
-                                        .foregroundColor(trend > 0.1 ? DS.Semantic.warning : trend < -0.1 ? DS.Semantic.success : DS.TextColor.tertiary)
-                                }
-                            } else if yesterday > 0 {
-                                // 今日无数据时显示昨日汇总
-                                Text("\(L10n.s("time.yesterday")) \(TokenTracker.formatTokens(yesterday))")
-                                    .font(DS.Font.monoSmall)
-                                    .foregroundColor(DS.TextColor.tertiary)
-                            }
-
-                            Spacer()
-                            DashboardPulseView(
-                                snapshot: GatewayDashboard.shared.snapshot,
-                                historyCount: history.count,
-                                isLoading: GatewayDashboard.shared.isLoading
-                            )
-                        }
-
-                        ForEach(history.prefix(20)) { record in
-                            HistoryRowView(
-                                record: record,
-                                expandedRecordId: $expandedRecordId
-                            )
-                        }
-                    } else if sessionStore.activeSessionCount == 0 {
-                        // Empty state
-                        emptyState
-                    }
-                }
-                .padding(.horizontal, DS.Space.md)
-                .padding(.top, DS.Space.sm)
-            }
-            .frame(maxHeight: .infinity)
+            // ── Timeline (replaces footprints + DualSource) ──
+            ActivityTimelineView(sessionStore: sessionStore)
+                .frame(maxHeight: .infinity)
 
             // 输入框 — 固定底部
             SpotlightInputView(
@@ -249,7 +198,19 @@ struct ExpandedPanelView: View {
                     // ── Connection Section ──
                     DS.sectionLabel(L10n.s("settings.connection"))
 
-                    settingRow(title: L10n.s("settings.mode"), value: AppSettings.roleName(AppSettings.setupRole))
+                    // Role picker
+                    HStack(spacing: DS.Space.sm) {
+                        ForEach([SetupRole.local, .monitor, .host], id: \.rawValue) { role in
+                            modeButton(
+                                AppSettings.roleName(role),
+                                isActive: AppSettings.setupRole == role,
+                                activeColor: DS.Semantic.accent.opacity(0.3)
+                            ) {
+                                AppSettings.setupRole = role
+                            }
+                        }
+                    }
+
                     settingRow(title: L10n.s("settings.method"),
                                value: AppSettings.setupRole == .local ? "Unix Socket" : "TCP")
                     settingRow(title: L10n.s("settings.port"), value: "TCP:\(SocketServer.tcpPort)")
@@ -314,18 +275,14 @@ struct ExpandedPanelView: View {
                     // ── Language Section ──
                     DS.sectionLabel(L10n.s("settings.language"))
 
-                    HStack(spacing: DS.Space.sm) {
+                    HStack(spacing: DS.Space.xs) {
                         ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
-                            modeButton(
-                                "\(lang.flag) \(lang.displayName)",
-                                isActive: L10n.language == lang,
-                                activeColor: DS.Semantic.accent.opacity(0.3)
-                            ) {
+                            langButton(lang, isActive: L10n.language == lang) {
                                 AppSettings.appLanguage = lang.rawValue
-                                // Force UI refresh
                                 NotificationCenter.default.post(name: .rockpileShouldRefreshUI, object: nil)
                             }
                         }
+                        Spacer()
                     }
 
                     sectionDividerInline
@@ -351,6 +308,7 @@ struct ExpandedPanelView: View {
                     DS.sectionLabel(L10n.s("settings.actions"))
 
                     Button(action: {
+                        HookInstaller.install()
                         PluginInstaller.installIfNeeded()
                         reinstallMessage = AppSettings.setupRole == .monitor
                             ? L10n.s("settings.reinstallNA")
@@ -447,16 +405,40 @@ struct ExpandedPanelView: View {
         font: SwiftUI.Font = DS.Font.secondary,
         action: @escaping () -> Void
     ) -> some View {
-        Button(label, action: action)
-            .font(font)
-            .buttonStyle(.plain)
-            .foregroundColor(isActive ? .white : DS.TextColor.secondary)
-            .padding(.horizontal, DS.Space.sm)
-            .padding(.vertical, DS.Space.xs)
-            .background(
-                RoundedRectangle(cornerRadius: DS.Radius.sm)
-                    .fill(isActive ? activeColor : DS.Surface.raised)
-            )
+        Button(action: action) {
+            Text(label)
+                .font(font)
+                .foregroundColor(isActive ? .white : DS.TextColor.secondary)
+                .padding(.horizontal, DS.Space.sm)
+                .padding(.vertical, DS.Space.xs)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .fill(isActive ? activeColor : DS.Surface.raised)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func langButton(_ lang: AppLanguage, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text("\(lang.flag) \(lang.displayName)")
+                .font(DS.Font.mono)
+                .foregroundColor(isActive ? .white : DS.TextColor.secondary)
+                .padding(.horizontal, DS.Space.sm)
+                .padding(.vertical, DS.Space.xs)
+                .background(
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .fill(isActive ? DS.Semantic.accent.opacity(0.3) : DS.Surface.raised)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .strokeBorder(isActive ? DS.Semantic.accent.opacity(0.5) : Color.clear, lineWidth: 1)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder

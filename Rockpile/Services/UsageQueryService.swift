@@ -85,6 +85,10 @@ final class UsageQueryService {
         if provider == .claudeSubscription && creature == .hermitCrab {
             // 首次立即读取
             readStatsCache()
+            // Try OAuth as well for richer data
+            if ClaudeKeychainReader.isAvailable {
+                Task { await queryClaudeOAuthUsage() }
+            }
             // 每 30 秒刷新（本地文件，开销极小）
             let timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
                 Task { @MainActor in self?.readStatsCache() }
@@ -327,6 +331,73 @@ final class UsageQueryService {
             remainingBalance: nil,
             queryTime: now
         )
+    }
+
+    // MARK: - Claude OAuth (Zero-Config)
+
+    /// Query Claude usage via OAuth token from Keychain — zero API key needed.
+    /// Uses Anthropic's OAuth usage endpoint.
+    func queryClaudeOAuthUsage() async {
+        guard let token = ClaudeKeychainReader.readAccessToken() else {
+            return
+        }
+
+        isQueryingLocal = true
+        defer { isQueryingLocal = false }
+
+        do {
+            let url = URL(string: "https://api.anthropic.com/api/oauth/usage")!
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
+            request.timeoutInterval = 15
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw QueryError.networkError("非 HTTP 响应")
+            }
+
+            if http.statusCode == 401 || http.statusCode == 403 {
+                // Token expired or invalid — clear cache
+                ClaudeKeychainReader.clearCache()
+                throw QueryError.invalidResponse(http.statusCode)
+            }
+            guard http.statusCode == 200 else {
+                throw QueryError.invalidResponse(http.statusCode)
+            }
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw QueryError.decodingFailed("JSON 解析失败")
+            }
+
+            // Parse five_hour quota
+            var utilization: Double = 0
+            var resetsAt: Date?
+
+            if let fiveHour = json["five_hour"] as? [String: Any] {
+                utilization = fiveHour["utilization"] as? Double ?? 0
+                if let resetStr = fiveHour["resets_at"] as? String {
+                    let formatter = ISO8601DateFormatter()
+                    resetsAt = formatter.date(from: resetStr)
+                }
+            }
+
+            // Map utilization to O₂ system
+            let tracker = StateMachine.shared.sessionStore.localTokenTracker
+            let capacity = AppSettings.localOxygenTankCapacity
+            let estimatedUsed = Int(utilization * Double(capacity))
+            if estimatedUsed > tracker.dailyTokensUsed {
+                tracker.setDailyTokensFromFile(estimatedUsed)
+            }
+
+            localError = nil
+            localBackoff = 0
+
+        } catch {
+            let msg = (error as? QueryError)?.description ?? error.localizedDescription
+            localError = msg
+            localBackoff = min(localBackoff == 0 ? 60 : localBackoff * 2, Self.maxBackoff)
+        }
     }
 
     // MARK: - Provider Resolution

@@ -21,6 +21,7 @@ struct NotchContentView: View {
     @State private var showingSettings = false
     @State private var isActivityCollapsed = false
     @State private var languageRefresh = 0
+    @State private var isHovering = false
 
     private var sessionStore: SessionStore {
         stateMachine.sessionStore
@@ -54,19 +55,32 @@ struct NotchContentView: View {
         return isActivityCollapsed ? collapsedHeight : fullHeight
     }
 
-    /// Pond visible height (40% — 生物观赏区，海底沙地 + 双生物 + 互动)
+    /// Pond visible height (30% — 极简水塘，双生物居中)
     private var pondVisibleHeight: CGFloat {
-        expandedPanelHeight * 0.40
+        expandedPanelHeight * 0.30
     }
 
-    /// Text panel height (60% — 核心信息面板：状态 / O₂ / 活动 / 足迹)
+    /// Text panel height (70% — Timeline + O₂)
     private var textPanelHeight: CGFloat {
-        expandedPanelHeight * 0.60
+        expandedPanelHeight * 0.70
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            notchLayout
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                notchLayout
+            }
+
+            // Permission request overlay
+            if isExpanded, let request = PermissionHandler.shared.pendingPermissions.first {
+                PermissionBannerView(
+                    request: request,
+                    onAllow: { PermissionHandler.shared.decide(request.id, .allow) },
+                    onDeny: { PermissionHandler.shared.decide(request.id, .deny) }
+                )
+                .padding(.horizontal, DS.Space.md)
+                .padding(.bottom, DS.Space.md)
+            }
         }
         .padding(.horizontal, isExpanded ? cornerRadiusInsets.opened.top : cornerRadiusInsets.closed.bottom)
         .padding(.bottom, isExpanded ? 12 : 0)
@@ -79,6 +93,13 @@ struct NotchContentView: View {
             color: isExpanded ? .black.opacity(0.7) : .clear,
             radius: 6
         )
+        .scaleEffect(isHovering && !isExpanded ? 1.02 : 1.0, anchor: .top)
+        .brightness(isHovering && !isExpanded ? 0.05 : 0)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isHovering = hovering
+            }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(panelAnimation, value: isExpanded)
         .onReceive(NotificationCenter.default.publisher(for: .rockpileShouldCollapse)) { _ in
@@ -115,7 +136,8 @@ struct NotchContentView: View {
                             selectedSessionId: sessionStore.selectedSessionId,
                             oxygenLevel: sessionStore.effectiveSession?.tokenTracker.oxygenLevel ?? 1.0,
                             localTokenTracker: sessionStore.localTokenTracker,
-                            remoteTokenTracker: sessionStore.remoteTokenTracker
+                            remoteTokenTracker: sessionStore.remoteTokenTracker,
+                            onSelectSession: { id in sessionStore.selectSession(id) }
                         )
                         .frame(width: panelWidth, height: pondVisibleHeight)
                         .clipped()
@@ -279,6 +301,7 @@ struct NotchContentView: View {
             isSelected: true,
             size: spriteSize
         )
+        .animation(.none, value: isExpanded)
     }
 
     /// 连接状态：green=已连接, yellow=中间态(发送中/排队), red=断开
