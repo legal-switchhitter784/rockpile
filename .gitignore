@@ -60,3 +60,6 @@ venv/
 # Logs
 *.log
 .superset/
+Rockpile/Resources/EnhancedSprites/
+Rockpile/Resources/OriginalBackup/
+Rockpile/Resources/SVGSprites/

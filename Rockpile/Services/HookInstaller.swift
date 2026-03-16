@@ -211,11 +211,18 @@ enum HookInstaller {
     private static func registerInSettings() {
         let hookCommand = "~/.claude/hooks/\(hookFileName)"
 
-        // Read existing settings
+        // Read existing settings (with backup if parse fails)
         var settings: [String: Any]
-        if let data = try? Data(contentsOf: settingsPath),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            settings = json
+        if let data = try? Data(contentsOf: settingsPath) {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                settings = json
+            } else {
+                // Malformed JSON — backup before overwriting
+                logger.warning("settings.json malformed, creating backup")
+                let backup = settingsPath.deletingPathExtension().appendingPathExtension("backup.json")
+                try? data.write(to: backup)
+                settings = [:]
+            }
         } else {
             settings = [:]
         }

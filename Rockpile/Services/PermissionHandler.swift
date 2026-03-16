@@ -116,6 +116,8 @@ final class PermissionHandler {
             logger.info("Wrote permission response to \(responseFile.path, privacy: .public)")
         } catch {
             logger.error("Failed to write permission response: \(error.localizedDescription)")
+            // Notify user — hook script will timeout and auto-deny
+            StateMachine.shared.reportError("Permission write failed — auto-deny in 5min")
         }
     }
 

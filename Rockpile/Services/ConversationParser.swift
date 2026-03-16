@@ -69,9 +69,14 @@ actor ConversationParser {
 
         var messages = sessionMessages[sessionId] ?? []
 
-        for line in lines {
+        var parseErrors = 0
+        for (idx, line) in lines.enumerated() {
             guard let lineData = line.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
+                parseErrors += 1
+                if parseErrors <= 3 {
+                    logger.warning("JSONL parse error at line \(idx): \(line.prefix(80), privacy: .public)")
+                }
                 continue
             }
 

@@ -16,7 +16,8 @@ struct HookEvent: Decodable, Sendable {
     let cacheReadTokens: Int?
     let cacheCreationTokens: Int?
 
-    // Daily aggregate (read from ~/.claude/stats-cache.json by plugin)
+    // Daily aggregate — only populated by legacy JS plugin (PluginInstaller),
+    // NOT by bash hook (HookInstaller). UsageQueryService reads stats-cache directly.
     let dailyTokensUsed: Int?
 
     // Rate limit flag (429 detected)

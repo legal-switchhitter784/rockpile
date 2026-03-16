@@ -17,11 +17,15 @@ enum ClaudeKeychainReader {
     /// Cached token to avoid repeated Keychain lookups
     private static var cachedToken: String?
     private static var lastReadTime: Date?
+    private static var accessDenied = false
     private static let cacheTimeout: TimeInterval = 300 // 5 min
 
     /// Read the OAuth access_token from Claude Code's Keychain entry.
     /// Returns nil if not found or access is denied.
     static func readAccessToken() -> String? {
+        // Don't re-prompt if user already denied Keychain access this session
+        if accessDenied { return nil }
+
         // Check cache
         if let cached = cachedToken,
            let lastRead = lastReadTime,
@@ -63,7 +67,8 @@ enum ClaudeKeychainReader {
             if status == errSecItemNotFound {
                 logger.info("No Claude Code credentials in Keychain")
             } else if status == errSecAuthFailed || status == -25293 {
-                logger.warning("Keychain access denied for Claude Code credentials")
+                logger.warning("Keychain access denied — won't re-prompt this session")
+                accessDenied = true
             } else {
                 logger.info("Keychain query returned: \(status)")
             }
