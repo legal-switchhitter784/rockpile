@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import ServiceManagement
 import os.log
 
@@ -13,12 +14,17 @@ extension Notification.Name {
 @MainActor
 final class StatusBarController: NSObject, NSMenuDelegate {
     private var statusItem: NSStatusItem?
+    private var popover: NSPopover?
+    private var usePopover = false
 
     /// Icon cache — avoid re-rendering when sprite name hasn't changed (CodexBar IconCacheStore 简化版)
     private var cachedIconName: String?
     private var cachedIcon: NSImage?
 
-    func setup() {
+    /// Setup menu bar item.
+    /// - Parameter showPopover: If true (no-notch Mac), clicking shows a popover panel instead of a dropdown menu.
+    func setup(showPopover: Bool = false) {
+        self.usePopover = showPopover
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let icon = createMenuBarIcon() {
@@ -28,12 +34,45 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         }
         item.button?.toolTip = "Rockpile"
 
-        let menu = NSMenu()
-        menu.delegate = self
-        item.menu = menu
-        statusItem = item
+        if showPopover {
+            // No-notch mode: click → popover with full panel
+            item.button?.action = #selector(togglePopover)
+            item.button?.target = self
+            setupPopover()
+        } else {
+            // Notch mode: click → dropdown menu
+            let menu = NSMenu()
+            menu.delegate = self
+            item.menu = menu
+        }
 
-        logger.info("Status bar item created")
+        statusItem = item
+        logger.info("Status bar item created (popover: \(showPopover))")
+    }
+
+    // MARK: - Popover (No-Notch Mode)
+
+    private func setupPopover() {
+        let pop = NSPopover()
+        pop.contentSize = NSSize(width: 420, height: 480)
+        pop.behavior = .transient
+        pop.animates = true
+
+        let contentView = NotchContentView()
+        pop.contentViewController = NSHostingController(rootView: contentView)
+        self.popover = pop
+    }
+
+    @objc private func togglePopover() {
+        guard let pop = popover, let button = statusItem?.button else { return }
+        if pop.isShown {
+            pop.performClose(nil)
+        } else {
+            updateIcon()
+            pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            // Auto-expand the panel manager so content renders
+            PanelManager.shared.expand()
+        }
     }
 
     // MARK: - NSMenuDelegate
@@ -261,21 +300,29 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     /// Extract the crayfish silhouette from the sprite sheet as a macOS template icon.
-    /// Template icons are black-on-transparent; macOS automatically renders them
-    /// in the correct color (white on dark menu bar, dark on light menu bar).
+    /// Renders at @2x for Retina clarity, with contrast boost for small-size legibility.
     private func createMenuBarIcon() -> NSImage? {
         guard let spriteSheet = NSImage(named: currentIconSpriteName),
               let rep = spriteSheet.representations.first else { return nil }
 
-        let frameW = CGFloat(rep.pixelsWide) / 12  // 12 animation frames
+        let numFrames = rep.pixelsWide > 640 ? 12 : 10
+        let frameW = CGFloat(rep.pixelsWide) / CGFloat(numFrames)
         let frameH = CGFloat(rep.pixelsHigh)
         let sourceRect = NSRect(x: 0, y: 0, width: frameW, height: frameH)
 
-        // Draw the first sprite frame at menu bar size
+        // Render at 2x (36×36 pixels) for Retina, displayed as 18×18 points
         let iconSize = NSSize(width: 18, height: 18)
         let icon = NSImage(size: iconSize, flipped: false) { rect in
+            // Use high-quality interpolation
+            NSGraphicsContext.current?.imageInterpolation = .high
+
+            // Draw sprite frame
             spriteSheet.draw(in: rect, from: sourceRect,
                              operation: .sourceOver, fraction: 1.0)
+
+            // Boost contrast: redraw with darker compositing for crisper silhouette
+            spriteSheet.draw(in: rect, from: sourceRect,
+                             operation: .sourceOver, fraction: 0.3)
             return true
         }
         // isTemplate = true → macOS controls the color to match other menu bar icons

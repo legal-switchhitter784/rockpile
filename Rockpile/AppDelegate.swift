@@ -4,9 +4,17 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notchPanel: NotchPanel?
+    private var menuBarPopover: NSPopover?
     private var onboardingWindow: NSWindow?
     private let windowHeight: CGFloat = 500
     private let statusBar = StatusBarController()
+
+    /// Whether the current screen has a hardware notch
+    private var hasNotch: Bool {
+        let screen = ScreenSelector.shared.selectedScreen
+            ?? NSScreen.main ?? NSScreen.screens.first
+        return screen?.hasNotch ?? false
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Zero-config: auto-setup on first launch (no onboarding wizard)
@@ -123,10 +131,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func launchNotchMode() {
         NSApplication.shared.setActivationPolicy(.accessory)
-        setupNotchWindow()
-        observeScreenChanges()
+        if hasNotch {
+            setupNotchWindow()
+            observeScreenChanges()
+        }
         startServices()
-        statusBar.setup()
+        statusBar.setup(showPopover: !hasNotch)
     }
 
     // MARK: - Host-Only Mode
