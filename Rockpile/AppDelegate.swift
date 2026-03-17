@@ -73,9 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AppSettings.appLanguage = "en"
         }
 
-        // Detect Claude Code → default to local mode
-        let claudeDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude")
+        // Default to local mode
         AppSettings.setupRole = .local
 
         // Auto-detect AI provider and configure O₂

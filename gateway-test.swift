@@ -8,7 +8,12 @@ import Foundation
 
 let host = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "127.0.0.1"
 let port = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "18789"
-let token = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : "REDACTED_TOKEN_REVOKE_IMMEDIATELY"
+guard CommandLine.arguments.count > 3 else {
+    print("Usage: swift gateway-test.swift <host> <port> <token>")
+    print("  token: Gateway auth token (required, never hardcode)")
+    exit(1)
+}
+let token = CommandLine.arguments[3]
 
 let wsURL = URL(string: "ws://\(host):\(port)")!
 print("🔌 Connecting to \(wsURL.absoluteString)...")

@@ -98,7 +98,7 @@ final class PermissionHandler {
     // MARK: - Private
 
     private func writeResponseFile(toolUseId: String, decision: Decision) {
-        let responseFile = URL(fileURLWithPath: "/tmp/rockpile-permission-\(toolUseId).json")
+        let filePath = "/tmp/rockpile-permission-\(toolUseId).json"
 
         let response: [String: Any] = [
             "decision": decision.rawValue,
@@ -111,14 +111,28 @@ final class PermissionHandler {
             return
         }
 
-        do {
-            try data.write(to: responseFile, options: .atomic)
-            logger.info("Wrote permission response to \(responseFile.path, privacy: .public)")
-        } catch {
-            logger.error("Failed to write permission response: \(error.localizedDescription)")
-            // Notify user — hook script will timeout and auto-deny
-            StateMachine.shared.reportError("Permission write failed — auto-deny in 5min")
+        // O_CREAT | O_EXCL: fail if file already exists (anti-TOCTOU pre-creation attack)
+        let fd = open(filePath, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+        if fd < 0 {
+            // File already exists — possible stale file. Remove and retry once.
+            logger.warning("Permission file already exists, removing stale: \(filePath, privacy: .public)")
+            unlink(filePath)
+            let fd2 = open(filePath, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+            guard fd2 >= 0 else {
+                logger.error("Failed to create permission response file after retry")
+                return
+            }
+            data.withUnsafeBytes { buf in
+                _ = write(fd2, buf.baseAddress!, buf.count)
+            }
+            close(fd2)
+            return
         }
+        data.withUnsafeBytes { buf in
+            _ = write(fd, buf.baseAddress!, buf.count)
+        }
+        close(fd)
+        logger.info("Wrote permission response to \(filePath, privacy: .public)")
     }
 
     private func formatInputSummary(_ input: [String: String]?) -> String {

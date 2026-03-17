@@ -447,7 +447,8 @@ final class UsageQueryService {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         let todayStr = formatter.string(from: Date())
-        let yesterdayStr = formatter.string(from: Calendar.current.date(byAdding: .day, value: -1, to: Date())!)
+        guard let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else { return }
+        let yesterdayStr = formatter.string(from: yesterday)
 
         if let dailyTokens = json["dailyModelTokens"] as? [[String: Any]] {
             let todayTokens = sumDayTokens(dailyTokens, date: todayStr)

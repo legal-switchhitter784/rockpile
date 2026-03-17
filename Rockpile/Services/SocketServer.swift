@@ -122,7 +122,10 @@ final class SocketServer: @unchecked Sendable {
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
         addr.sin_port = Self.tcpPort.bigEndian
-        addr.sin_addr.s_addr = INADDR_ANY  // Listen on all interfaces
+        // host 模式: 监听所有接口 (接收远程 monitor 事件)
+        // 其他模式: 仅 localhost (防止未认证的远程连接)
+        let listenAll = DispatchQueue.main.sync { AppSettings.setupRole == .host }
+        addr.sin_addr.s_addr = listenAll ? INADDR_ANY : inet_addr("127.0.0.1")
 
         let bindResult = withUnsafePointer(to: &addr) { ptr in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
@@ -263,10 +266,9 @@ final class SocketServer: @unchecked Sendable {
             EventLogger.shared.logRawEvent(source: "TCP", byteCount: byteCount, clientIP: clientIP)
         }
 
-        // Detect HTTP POST vs raw JSON
+        // Reuse earlier HTTP detection (single source of truth)
         let jsonData: Data
-        if let rawString = String(data: allData, encoding: .utf8),
-           rawString.hasPrefix("POST ") || rawString.hasPrefix("GET ") {
+        if isHTTP, let rawString = String(data: allData, encoding: .utf8) {
             jsonData = handleHTTPRequest(rawString: rawString, clientSocket: clientSocket, rawData: allData)
         } else {
             jsonData = allData
@@ -389,10 +391,22 @@ final class SocketServer: @unchecked Sendable {
         // Read values directly from UserDefaults (thread-safe) after main thread completes
         let defaults = UserDefaults.standard
         let cmdPort = defaults.integer(forKey: "commandPort")
-        let cmdPortVal = cmdPort > 0 ? UInt16(cmdPort) : UInt16(18793)
+        let cmdPortVal = cmdPort > 0 ? cmdPort : 18793
         let cmdToken = defaults.string(forKey: "commandToken") ?? ""
-        let safeToken = cmdToken.replacingOccurrences(of: "\"", with: "")
-        sendHTTPResponse(clientSocket, status: 200, body: "{\"ok\":true,\"needRestart\":true,\"commandPort\":\(cmdPortVal),\"commandToken\":\"\(safeToken)\"}")
+        let responseDict: [String: Any] = [
+            "ok": true,
+            "needRestart": true,
+            "commandPort": cmdPortVal,
+            "commandToken": cmdToken,
+        ]
+        let body: String
+        if let jsonData = try? JSONSerialization.data(withJSONObject: responseDict),
+           let jsonStr = String(data: jsonData, encoding: .utf8) {
+            body = jsonStr
+        } else {
+            body = "{\"ok\":true}"
+        }
+        sendHTTPResponse(clientSocket, status: 200, body: body)
     }
 
     /// Extract Content-Length value from HTTP headers string

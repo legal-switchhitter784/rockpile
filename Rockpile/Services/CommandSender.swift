@@ -76,9 +76,8 @@ final class CommandSender {
         }
     }
 
-    /// Send interrupt signal (v1.3 急停预留)
+    /// Send interrupt signal (未实现 — Gateway 暂不支持)
     func sendInterrupt(sessionId: String? = nil) {
-        // TODO: v1.3 — implement via gateway
         lastResult = .error(L10n.s("cmd.emergencyWIP"))
     }
 
