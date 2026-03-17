@@ -80,10 +80,13 @@ struct SpotlightInputView: View {
             Text(text)
                 .font(DS.Font.caption)
                 .foregroundColor(color)
+                .lineLimit(1)
             Spacer()
         }
         .padding(.horizontal, DS.Space.md)
         .padding(.vertical, DS.Space.xxs)
+        .frame(height: 20)
+        .fixedSize(horizontal: false, vertical: true)
         .transition(.opacity)
     }
 
