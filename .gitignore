@@ -63,3 +63,6 @@ venv/
 Rockpile/Resources/EnhancedSprites/
 Rockpile/Resources/OriginalBackup/
 Rockpile/Resources/SVGSprites/
+
+# Team review reports
+.team-reports/

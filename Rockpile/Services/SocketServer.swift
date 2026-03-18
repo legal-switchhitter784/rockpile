@@ -235,6 +235,12 @@ final class SocketServer: @unchecked Sendable {
             if let sepRange = allData.range(of: headerSep) ?? allData.range(of: altSep) {
                 let headerBytes = allData[allData.startIndex..<sepRange.lowerBound]
                 let contentLength = parseContentLength(String(data: headerBytes, encoding: .utf8) ?? "")
+                let maxBodySize = 1_048_576  // 1MB — reject oversized payloads
+                if contentLength > maxBodySize {
+                    logger.warning("Rejecting oversized HTTP body: \(contentLength) bytes from \(clientIP)")
+                    sendHTTPResponse(clientSocket, status: 413, body: "{\"error\":\"body too large\"}")
+                    return
+                }
                 if contentLength > 0 {
                     let bodyStart = allData.distance(from: allData.startIndex, to: sepRange.upperBound)
                     var bodyReceived = allData.count - bodyStart
@@ -251,10 +257,15 @@ final class SocketServer: @unchecked Sendable {
             }
         } else {
             // Raw JSON: plugin calls .end() after writing, read until close
+            let maxRawSize = 1_048_576  // 1MB
             while true {
                 let n = read(clientSocket, &buffer, buffer.count)
                 guard n > 0 else { break }
                 allData.append(contentsOf: buffer[0..<n])
+                if allData.count > maxRawSize {
+                    logger.warning("Dropping oversized raw payload: \(allData.count) bytes from \(clientIP)")
+                    return
+                }
             }
         }
 

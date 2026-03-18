@@ -54,7 +54,7 @@ struct CompactOxygenBarView: View {
 
                 // Percentage
                 if tracker.isDead {
-                    Text("K.O.")
+                    Text(L10n.s("o2.ko"))
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundColor(DS.Semantic.danger)
                         .opacity(blinkOn ? 1 : DS.Opacity.tertiary)

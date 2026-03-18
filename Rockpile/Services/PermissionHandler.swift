@@ -33,7 +33,26 @@ final class PermissionHandler {
     /// Timeout duration (5 minutes)
     private let timeoutDuration: TimeInterval = 300
 
-    private init() {}
+    private init() {
+        cleanupStaleFiles()
+    }
+
+    /// Remove stale permission response files from /tmp on launch
+    private func cleanupStaleFiles() {
+        let fm = FileManager.default
+        let tmpDir = "/tmp"
+        guard let files = try? fm.contentsOfDirectory(atPath: tmpDir) else { return }
+        let staleThreshold: TimeInterval = 600  // 10 minutes
+        let now = Date()
+        for file in files where file.hasPrefix("rockpile-permission-") && file.hasSuffix(".json") {
+            let path = "\(tmpDir)/\(file)"
+            guard let attrs = try? fm.attributesOfItem(atPath: path),
+                  let modified = attrs[.modificationDate] as? Date,
+                  now.timeIntervalSince(modified) > staleThreshold else { continue }
+            try? fm.removeItem(atPath: path)
+            logger.info("Cleaned stale permission file: \(file, privacy: .public)")
+        }
+    }
 
     /// Add a new permission request
     func addRequest(toolUseId: String, toolName: String, toolInput: [String: String]?, sessionId: String) {

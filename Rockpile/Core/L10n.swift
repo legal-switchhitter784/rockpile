@@ -187,6 +187,14 @@ enum L10n {
         "cmd.expired": "指令已过期",
         "cmd.emergencyWIP": "急停功能开发中",
 
+        // ── Permission ──
+        "perm.allow": "允许",
+        "perm.deny": "拒绝",
+
+        // ── Tabs ──
+        "tab.dashboard": "仪表盘",
+        "tab.chat": "对话",
+
         // ── Version Notes ──
         "version.note1": "🐚 寄居蟹: 本地 Claude Code 专属生物",
         "version.note2": "🦞 双生态: 寄居蟹(本地) + 小龙虾(远程) 共存",
@@ -474,6 +482,14 @@ enum L10n {
         "cmd.expired": "Command expired",
         "cmd.emergencyWIP": "Emergency stop — WIP",
 
+        // ── Permission ──
+        "perm.allow": "Allow",
+        "perm.deny": "Deny",
+
+        // ── Tabs ──
+        "tab.dashboard": "Dashboard",
+        "tab.chat": "Chat",
+
         // ── Version Notes ──
         "version.note1": "🐚 Hermit Crab: Local Claude Code companion",
         "version.note2": "🦞 Dual ecosystem: Hermit Crab (local) + Crawfish (remote)",
@@ -760,6 +776,14 @@ enum L10n {
         "cmd.failed": "送信失敗",
         "cmd.expired": "コマンド期限切れ",
         "cmd.emergencyWIP": "緊急停止 — 開発中",
+
+        // ── Permission ──
+        "perm.allow": "許可",
+        "perm.deny": "拒否",
+
+        // ── Tabs ──
+        "tab.dashboard": "ダッシュボード",
+        "tab.chat": "チャット",
 
         // ── Version Notes ──
         "version.note1": "🐚 ヤドカリ: ローカル Claude Code 専用コンパニオン",

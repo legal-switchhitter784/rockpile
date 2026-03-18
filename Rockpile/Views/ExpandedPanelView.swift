@@ -50,8 +50,8 @@ struct ExpandedPanelView: View {
     @ViewBuilder
     private var tabBar: some View {
         HStack(spacing: DS.Space.sm) {
-            tabButton("Dashboard", tab: .dashboard, icon: "chart.bar")
-            tabButton("Chat", tab: .chat, icon: "bubble.left.and.bubble.right")
+            tabButton(L10n.s("tab.dashboard"), tab: .dashboard, icon: "chart.bar")
+            tabButton(L10n.s("tab.chat"), tab: .chat, icon: "bubble.left.and.bubble.right")
             Spacer()
         }
         .padding(.horizontal, DS.Space.md)

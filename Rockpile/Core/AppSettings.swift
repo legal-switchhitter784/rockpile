@@ -53,16 +53,28 @@ enum AppSettings {
     // MARK: - API Keys
 
     /// Anthropic API key for emotion analysis via Claude Haiku.
-    /// Falls back to ANTHROPIC_API_KEY environment variable.
+    /// Stored in Keychain. Falls back to ANTHROPIC_API_KEY environment variable.
     static var anthropicApiKey: String? {
         get {
-            if let saved = UserDefaults.standard.string(forKey: anthropicApiKeyKey), !saved.isEmpty {
+            // 1. Keychain (secure)
+            if let saved = readKeychain(service: "com.rockpile.anthropic", account: "apiKey"), !saved.isEmpty {
                 return saved
             }
+            // 2. Legacy: migrate from UserDefaults to Keychain
+            if let legacy = UserDefaults.standard.string(forKey: anthropicApiKeyKey), !legacy.isEmpty {
+                writeKeychain(service: "com.rockpile.anthropic", account: "apiKey", value: legacy)
+                UserDefaults.standard.removeObject(forKey: anthropicApiKeyKey)
+                return legacy
+            }
+            // 3. Environment variable fallback
             return ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: anthropicApiKeyKey)
+            if let value = newValue, !value.isEmpty {
+                writeKeychain(service: "com.rockpile.anthropic", account: "apiKey", value: value)
+            }
+            // Clean up legacy UserDefaults entry
+            UserDefaults.standard.removeObject(forKey: anthropicApiKeyKey)
         }
     }
 

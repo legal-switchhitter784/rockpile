@@ -49,7 +49,7 @@ struct PermissionBannerView: View {
                 Button {
                     onAllow()
                 } label: {
-                    Text("Allow")
+                    Text(L10n.s("perm.allow"))
                         .font(DS.Font.monoBold)
                         .foregroundColor(.white)
                         .padding(.horizontal, DS.Space.md)
@@ -64,7 +64,7 @@ struct PermissionBannerView: View {
                 Button {
                     onDeny()
                 } label: {
-                    Text("Deny")
+                    Text(L10n.s("perm.deny"))
                         .font(DS.Font.monoBold)
                         .foregroundColor(.white)
                         .padding(.horizontal, DS.Space.md)
