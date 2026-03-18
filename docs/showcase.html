@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rockpile — Notch Companion</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: rgba(255,255,255,0.06);
+    --surface-raised: rgba(255,255,255,0.08);
+    --text-primary: rgba(255,255,255,0.88);
+    --text-secondary: rgba(255,255,255,0.6);
+    --text-tertiary: rgba(255,255,255,0.38);
+    --text-muted: rgba(255,255,255,0.15);
+    --cyan: #00e5ff;
+    --orange: #ff9500;
+    --green: #33d94a;
+    --warning: #f2bf19;
+    --danger: #f2331a;
+    --pond-top: #0a1628;
+    --pond-bottom: #050d18;
+    --water-surface: rgba(0, 180, 255, 0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+  }
+
+  /* ═══ MacBook Frame ═══ */
+  .macbook-frame {
+    position: relative;
+    width: 900px;
+    height: 580px;
+    margin: 40px auto 0;
+    background: linear-gradient(180deg, #1a1a1e 0%, #0d0d0f 4%, #141416 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+
+  /* Menu bar */
+  .menu-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 25px;
+    padding: 0 14px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(20px);
+    font-size: 11px;
+    color: var(--text-primary);
+  }
+  .menu-bar-left { display: flex; gap: 16px; align-items: center; }
+  .menu-bar-right { display: flex; gap: 12px; align-items: center; color: var(--text-secondary); font-size: 10px; }
+  .apple-logo { font-size: 13px; }
+
+  /* ═══ Notch ═══ */
+  .notch-area {
+    position: relative;
+    width: 100%;
+    height: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .notch-collapsed {
+    position: relative;
+    width: 220px;
+    height: 34px;
+    background: #000;
+    border-radius: 0 0 16px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    z-index: 10;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .notch-collapsed:hover {
+    transform: scaleX(1.03);
+    filter: brightness(1.05);
+  }
+
+  .notch-expanded {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 420px;
+    background: #000;
+    border-radius: 0 0 24px 24px;
+    z-index: 10;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    overflow: hidden;
+  }
+
+  /* ═══ Collapsed Notch Content ═══ */
+  .notch-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .o2-warning {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--warning);
+    background: rgba(242, 191, 25, 0.08);
+    border: 0.5px solid rgba(242, 191, 25, 0.38);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .notch-sprite {
+    width: 28px;
+    height: 28px;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 0 3px rgba(0,229,255,0.3));
+  }
+
+  /* ═══ Expanded Panel ═══ */
+  .expanded-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 16px;
+    height: 34px;
+  }
+  .traffic-lights {
+    display: flex;
+    gap: 4px;
+  }
+  .traffic-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .dot-red { background: var(--danger); opacity: 0.2; }
+  .dot-yellow { background: var(--warning); opacity: 0.2; }
+  .dot-green { background: var(--green); }
+  .header-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .header-btn {
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0.6;
+  }
+  .header-btn:hover { opacity: 1; }
+
+  /* ═══ Pond ═══ */
+  .pond {
+    position: relative;
+    height: 120px;
+    background: linear-gradient(180deg, var(--pond-top) 0%, var(--pond-bottom) 100%);
+    overflow: hidden;
+  }
+  .water-surface {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 5%, var(--water-surface) 30%, rgba(0,180,255,0.2) 50%, var(--water-surface) 70%, transparent 95%);
+    animation: shimmer 4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .sprite-container {
+    position: absolute;
+    bottom: 12px;
+    display: flex;
+    align-items: flex-end;
+    gap: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .sprite {
+    width: 52px;
+    height: 52px;
+    image-rendering: pixelated;
+    animation: bob 3s ease-in-out infinite;
+  }
+  .sprite-crab {
+    animation-delay: -1.5s;
+    filter: drop-shadow(0 0 6px rgba(0,229,255,0.2));
+  }
+  .sprite-crawfish {
+    filter: drop-shadow(0 0 6px rgba(255,149,0,0.2));
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  /* Bubbles */
+  .bubble {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(0, 200, 255, 0.15);
+    border-radius: 50%;
+    animation: rise 4s ease-in infinite;
+  }
+  @keyframes rise {
+    0% { transform: translateY(0) scale(1); opacity: 0.4; }
+    100% { transform: translateY(-80px) scale(0.3); opacity: 0; }
+  }
+
+  /* Ground */
+  .ground {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: linear-gradient(180deg, transparent, rgba(60,40,20,0.4));
+  }
+  .pebble {
+    position: absolute;
+    bottom: 2px;
+    width: 6px;
+    height: 4px;
+    background: rgba(120,100,80,0.3);
+    border-radius: 50%;
+  }
+
+  /* ═══ Dashboard Panel ═══ */
+  .dashboard {
+    padding: 0 12px 10px;
+    background: #000;
+  }
+
+  /* O₂ Bars */
+  .o2-section {
+    margin-bottom: 6px;
+  }
+  .o2-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 22px;
+    margin-bottom: 3px;
+  }
+  .o2-icon { font-size: 11px; width: 16px; text-align: center; }
+  .o2-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    width: 52px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .o2-bar-track {
+    flex: 1;
+    height: 6px;
+    display: flex;
+    gap: 1px;
+  }
+  .o2-block {
+    width: 3px;
+    height: 6px;
+    border-radius: 0.5px;
+  }
+  .o2-block.filled-cyan { background: var(--cyan); }
+  .o2-block.filled-green { background: var(--green); }
+  .o2-block.filled-orange { background: var(--orange); }
+  .o2-block.filled-warning { background: var(--warning); }
+  .o2-block.filled-danger { background: var(--danger); }
+  .o2-block.empty { background: var(--surface-raised); }
+
+  .o2-percent {
+    font-size: 9px;
+    font-weight: 700;
+    width: 28px;
+    text-align: right;
+  }
+  .o2-data {
+    font-size: 8px;
+    color: var(--text-tertiary);
+    width: 50px;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    gap: 6px;
+    padding: 2px 0 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 6px;
+  }
+  .tab {
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  .tab.active {
+    color: var(--text-primary);
+    background: var(--surface-raised);
+  }
+  .tab-icon { margin-right: 3px; font-size: 8px; }
+
+  /* Activity Timeline */
+  .timeline {
+    overflow: hidden;
+    max-height: 130px;
+  }
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    font-size: 9px;
+  }
+  .activity-time {
+    color: var(--text-tertiary);
+    width: 32px;
+    font-size: 8px;
+    text-align: right;
+  }
+  .activity-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .activity-text {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Input bar */
+  .input-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0 2px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    margin-top: 4px;
+  }
+  .input-prompt {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .input-placeholder {
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  /* ═══ Desktop Wallpaper ═══ */
+  .desktop {
+    position: absolute;
+    top: 25px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+    z-index: 1;
+  }
+
+  /* ═══ Showcase Layout ═══ */
+  .showcase {
+    width: 960px;
+    margin: 0 auto;
+    padding: 48px 0 32px;
+  }
+
+  /* Scene 1: Hero — collapsed notch on macbook */
+  #scene-hero {
+    position: relative;
+  }
+
+  /* Scene 2: Expanded panel */
+  #scene-expanded {
+    position: relative;
+    margin-top: 48px;
+  }
+
+  /* Scene 3: Feature cards */
+  .features {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2px;
+    margin-top: 48px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .feature-card {
+    padding: 28px 24px;
+    background: var(--bg);
+  }
+  .feature-icon {
+    font-size: 24px;
+    margin-bottom: 12px;
+  }
+  .feature-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .feature-desc {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+  }
+
+  /* ═══ Permission Banner ═══ */
+  .permission-banner {
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 380px;
+    background: rgba(0,0,0,0.95);
+    border: 1px solid rgba(242,191,25,0.5);
+    border-radius: 8px;
+    padding: 10px 12px;
+    z-index: 20;
+  }
+  .perm-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .perm-icon { color: var(--warning); font-size: 12px; }
+  .perm-tool { font-size: 11px; font-weight: 700; }
+  .perm-countdown { font-size: 9px; color: var(--text-tertiary); margin-left: auto; }
+  .perm-detail { font-size: 10px; color: var(--text-secondary); margin-bottom: 8px; margin-left: 20px; }
+  .perm-buttons { display: flex; gap: 8px; margin-left: 20px; }
+  .perm-btn {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 3px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    color: white;
+  }
+  .perm-allow { background: var(--green); }
+  .perm-deny { background: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="showcase">
+
+  <!-- ═══ Scene 1: Hero — Expanded Notch ═══ -->
+  <div id="scene-expanded">
+    <div class="macbook-frame">
+      <div class="menu-bar">
+        <div class="menu-bar-left">
+          <span class="apple-logo"></span>
+          <span>Finder</span>
+          <span>File</span>
+          <span>Edit</span>
+          <span>View</span>
+        </div>
+        <div class="menu-bar-right">
+          <span>🦞</span>
+          <span>Wi-Fi</span>
+          <span>100%</span>
+          <span>3:42 PM</span>
+        </div>
+      </div>
+      <div class="desktop">
+        <!-- Notch expanded -->
+        <div class="notch-area">
+          <div class="notch-expanded">
+            <!-- Header -->
+            <div class="expanded-header">
+              <div class="traffic-lights">
+                <div class="traffic-dot dot-red"></div>
+                <div class="traffic-dot dot-yellow"></div>
+                <div class="traffic-dot dot-green"></div>
+              </div>
+              <div class="header-actions">
+                <span class="header-btn">📌</span>
+                <span class="header-btn">⚙</span>
+                <span class="header-btn">✕</span>
+              </div>
+            </div>
+
+            <!-- Pond -->
+            <div class="pond">
+              <div class="water-surface"></div>
+              <div class="sprite-container">
+                <img class="sprite sprite-crab" src="../Rockpile/Assets.xcassets/crab_working_happy.imageset/crab_working_happy.png" alt="Hermit Crab">
+                <img class="sprite sprite-crawfish" src="../Rockpile/Assets.xcassets/working_happy.imageset/working_happy.png" alt="Crawfish">
+              </div>
+              <!-- Bubbles -->
+              <div class="bubble" style="left:35%; bottom:30px; animation-delay:0s;"></div>
+              <div class="bubble" style="left:55%; bottom:20px; animation-delay:1.2s; width:3px; height:3px;"></div>
+              <div class="bubble" style="left:42%; bottom:25px; animation-delay:2.5s; width:5px; height:5px;"></div>
+              <div class="bubble" style="left:60%; bottom:35px; animation-delay:0.8s;"></div>
+              <!-- Ground -->
+              <div class="ground">
+                <div class="pebble" style="left:20%;"></div>
+                <div class="pebble" style="left:45%; width:8px;"></div>
+                <div class="pebble" style="left:70%; width:5px;"></div>
+              </div>
+            </div>
+
+            <!-- Dashboard -->
+            <div class="dashboard">
+              <!-- O₂ Bars -->
+              <div class="o2-section">
+                <div class="o2-row">
+                  <span class="o2-icon">🐚</span>
+                  <span class="o2-label" style="color:var(--cyan)">Claude...</span>
+                  <div class="o2-bar-track" id="local-bar"></div>
+                  <span class="o2-percent" style="color:var(--green)">95%</span>
+                  <span class="o2-data">↑1.2K/m</span>
+                </div>
+                <div class="o2-row">
+                  <span class="o2-icon">🦞</span>
+                  <span class="o2-label" style="color:var(--orange)">Gemini</span>
+                  <div class="o2-bar-track" id="remote-bar"></div>
+                  <span class="o2-percent" style="color:var(--orange)">100%</span>
+                  <span class="o2-data">$12.50</span>
+                </div>
+              </div>
+
+              <!-- Tab Bar -->
+              <div class="tab-bar">
+                <span class="tab active"><span class="tab-icon">📊</span>仪表盘</span>
+                <span class="tab"><span class="tab-icon">💬</span>对话</span>
+              </div>
+
+              <!-- Activity Timeline -->
+              <div class="timeline">
+                <div class="activity-item">
+                  <span class="activity-time">3:42</span>
+                  <div class="activity-dot" style="background:var(--green)"></div>
+                  <span class="activity-text">🐚 Edit — AppSettings.swift</span>
+                </div>
+                <div class="activity-item">
+                  <span class="activity-time">3:41</span>
+                  <div class="activity-dot" style="background:var(--orange)"></div>
+                  <span class="activity-text">🐚 Bash — xcodebuild -scheme Rockpile</span>
+                </div>
+                <div class="activity-item">
+                  <span class="activity-time">3:40</span>
+                  <div class="activity-dot" style="background:var(--cyan)"></div>
+                  <span class="activity-text">🐚 思考中...</span>
+                </div>
+                <div class="activity-item">
+                  <span class="activity-time">3:39</span>
+                  <div class="activity-dot" style="background:var(--green)"></div>
+                  <span class="activity-text">🐚 Grep — "anthropicApiKey"</span>
+                </div>
+                <div class="activity-item">
+                  <span class="activity-time">3:38</span>
+                  <div class="activity-dot" style="background:var(--cyan)"></div>
+                  <span class="activity-text">🐚 新消息 — "帮我修好所有"</span>
+                </div>
+                <div class="activity-item">
+                  <span class="activity-time">3:35</span>
+                  <div class="activity-dot" style="background:var(--green)"></div>
+                  <span class="activity-text">🦞 WebSearch — market analysis Q1</span>
+                </div>
+              </div>
+
+              <!-- Input Bar -->
+              <div class="input-bar">
+                <span class="input-prompt">&gt;</span>
+                <span class="input-placeholder">发送指令... (↵)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Feature Cards ═══ -->
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🫧</div>
+      <div class="feature-title">O₂ Token 感知</div>
+      <div class="feature-desc">像素氧气条映射 token 消耗。低氧时水变浑、精灵翻肚，直觉感知配额状态。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔔</div>
+      <div class="feature-title">权限拦截</div>
+      <div class="feature-desc">Claude Code 请求工具权限时，notch 自动展开显示 Allow/Deny，5 分钟超时自动拒绝。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🦞🐚</div>
+      <div class="feature-title">双生物生态</div>
+      <div class="feature-desc">寄居蟹（本地 Claude）+ 小龙虾（远程 AI），各自独立 O₂ 条、情绪状态、活动时间线。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">零配置启动</div>
+      <div class="feature-desc">自动检测 Claude Code、安装 bash hooks、配置语言和角色。打开即用，无需引导。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">燃烧率 & ETA</div>
+      <div class="feature-desc">滑动窗口计算实时 token 消耗速率、剩余时间预估、pace 超前/正常/落后指示。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎨</div>
+      <div class="feature-title">Pixar 3D 精灵</div>
+      <div class="feature-desc">30 组状态×情绪精灵组合，Aseprite 动画支持，TimelineView + Canvas 60fps 渲染。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Generate pixel O₂ bars
+  function generateBar(id, fillPercent, color) {
+    const track = document.getElementById(id);
+    const blockCount = 55;
+    const filled = Math.round(blockCount * fillPercent);
+    let html = '';
+    for (let i = 0; i < blockCount; i++) {
+      html += `<div class="o2-block ${i < filled ? 'filled-' + color : 'empty'}"></div>`;
+    }
+    track.innerHTML = html;
+  }
+  generateBar('local-bar', 0.95, 'green');
+  generateBar('remote-bar', 1.0, 'orange');
+</script>
+
+</body>
+</html>

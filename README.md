@@ -9,7 +9,7 @@
 [![macOS 15+](https://img.shields.io/badge/macOS-15.0%2B-black?logo=apple&logoColor=white)](https://www.apple.com/macos/)
 [![Swift 6](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.5-brightgreen)](https://github.com/ar-gen-tin/rockpile/releases)
+[![Version](https://img.shields.io/badge/version-2.2.1-brightgreen)](https://github.com/ar-gen-tin/rockpile/releases)
 
 [![GitHub Stars](https://img.shields.io/github/stars/ar-gen-tin/rockpile?style=flat-square&logo=github)](https://github.com/ar-gen-tin/rockpile/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/ar-gen-tin/rockpile?style=flat-square&logo=github)](https://github.com/ar-gen-tin/rockpile/network/members)
@@ -18,7 +18,9 @@
 
 <br>
 
-<!-- ![Rockpile Screenshot](docs/images/screenshot-hero.png) -->
+![Rockpile Screenshot](docs/images/screenshots/screenshot-hero.png)
+
+![Rockpile Features](docs/images/screenshots/screenshot-full.png)
 
 </div>
 
