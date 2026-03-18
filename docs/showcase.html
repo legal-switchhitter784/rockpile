@@ -197,6 +197,18 @@
     height: 52px;
     image-rendering: pixelated;
     animation: bob 3s ease-in-out infinite;
+    overflow: hidden;
+    position: relative;
+  }
+  .sprite-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 52px;
+    /* Scale sprite sheet: original 768x64, show 1 frame (64x64) at 52px display */
+    /* width = 768 * (52/64) = 624px */
+    width: 624px;
+    image-rendering: pixelated;
   }
   .sprite-crab {
     animation-delay: -1.5s;
@@ -514,8 +526,12 @@
             <div class="pond">
               <div class="water-surface"></div>
               <div class="sprite-container">
-                <img class="sprite sprite-crab" src="../Rockpile/Assets.xcassets/crab_working_happy.imageset/crab_working_happy.png" alt="Hermit Crab">
-                <img class="sprite sprite-crawfish" src="../Rockpile/Assets.xcassets/working_happy.imageset/working_happy.png" alt="Crawfish">
+                <div class="sprite sprite-crab">
+                  <img class="sprite-inner" src="../Rockpile/Assets.xcassets/crab_working_happy.imageset/crab_working_happy.png" alt="Hermit Crab">
+                </div>
+                <div class="sprite sprite-crawfish">
+                  <img class="sprite-inner" src="../Rockpile/Assets.xcassets/working_happy.imageset/working_happy.png" alt="Crawfish">
+                </div>
               </div>
               <!-- Bubbles -->
               <div class="bubble" style="left:35%; bottom:30px; animation-delay:0s;"></div>
